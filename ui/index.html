@@ -103,6 +103,86 @@
     font-family: 'Orbitron', sans-serif;
     letter-spacing: 1px;
   }
+
+  .ai-toolbar {
+    display: flex;
+    gap: 10px;
+    padding: 14px 24px 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .ai-toolbar::-webkit-scrollbar { display: none; }
+  .toolbar-chip {
+    min-width: 128px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    color: rgba(255,255,255,0.5);
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .toolbar-chip::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: rgba(255,255,255,0.08);
+  }
+  .toolbar-chip .icon {
+    width: 24px; height: 24px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.25);
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+  .toolbar-chip .meta { display: flex; flex-direction: column; min-width: 0; }
+  .toolbar-chip .label { font-family: 'Orbitron', sans-serif; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .toolbar-chip .sub { font-size: 10px; opacity: 0.65; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .toolbar-chip.pending { opacity: 0.72; }
+  .toolbar-chip.active {
+    background: rgba(255,45,120,0.14);
+    border-color: rgba(255,45,120,0.45);
+    color: #fff;
+    box-shadow: 0 0 18px rgba(255,45,120,0.18), inset 0 0 18px rgba(255,45,120,0.08);
+    transform: translateY(-1px) scale(1.02);
+  }
+  .toolbar-chip.active::before { background: linear-gradient(180deg, var(--neon-pink), var(--neon-purple)); }
+  .toolbar-chip.active .icon {
+    background: rgba(255,45,120,0.2);
+    color: var(--neon-pink);
+    box-shadow: 0 0 12px rgba(255,45,120,0.35);
+    animation: toolbar-pulse 1.2s ease-in-out infinite alternate;
+  }
+  .toolbar-chip.done {
+    background: rgba(0,255,209,0.08);
+    border-color: rgba(0,255,209,0.22);
+    color: rgba(255,255,255,0.86);
+  }
+  .toolbar-chip.done::before { background: linear-gradient(180deg, var(--neon-teal), var(--neon-cyan)); }
+  .toolbar-chip.done .icon {
+    background: rgba(0,255,209,0.16);
+    color: var(--neon-teal);
+  }
+  .toolbar-chip.error {
+    background: rgba(255,68,68,0.12);
+    border-color: rgba(255,68,68,0.38);
+    color: #fff;
+  }
+  .toolbar-chip.error::before { background: #FF4444; }
+  .toolbar-chip.error .icon {
+    background: rgba(255,68,68,0.16);
+    color: #FF4444;
+  }
+  @keyframes toolbar-pulse {
+    from { box-shadow: 0 0 12px rgba(255,45,120,0.35); }
+    to { box-shadow: 0 0 24px rgba(255,45,120,0.7); }
+  }
   .pulse-dot {
     width: 8px; height: 8px;
     border-radius: 50%;
@@ -254,10 +334,21 @@
   .ticker-item { display: flex; gap: 6px; }
   .ticker-label { color: rgba(255,255,255,0.2); }
   .ticker-val { color: var(--neon-cyan); }
+  .goal-presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .goal-option {
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(0, 245, 255, 0.18);
+    border-radius: 999px;
+    padding: 8px 12px;
+    color: rgba(255,255,255,0.82);
+    font-size: 11px;
+    font-family: 'Space Grotesk', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .goal-option:hover { border-color: rgba(0,245,255,0.45); box-shadow: 0 0 10px rgba(0,245,255,0.08); transform: translateY(-1px); }
+  .goal-option.selected { background: linear-gradient(135deg, rgba(0,245,255,0.22), rgba(0,255,209,0.18)); border-color: rgba(0,245,255,0.6); color: #fff; box-shadow: 0 0 16px rgba(0,245,255,0.14); }
   .goal-input-wrap { display: flex; gap: 8px; margin-top: 12px; }
-  .goal-input { flex: 1; background: rgba(0,0,0,0.4); border: 1px solid rgba(0, 245, 255, 0.2); border-radius: 8px; padding: 8px 12px; color: white; font-size: 12px; font-family: 'Space Grotesk', sans-serif; outline: none; transition: border-color 0.2s; }
-  .goal-input:focus { border-color: var(--neon-cyan); box-shadow: 0 0 10px rgba(0,245,255,0.1); }
-  .goal-input::placeholder { color: rgba(255,255,255,0.2); }
   .goal-btn { background: linear-gradient(135deg, var(--neon-cyan), var(--neon-teal)); border: none; color: var(--dark-blue); padding: 8px 14px; border-radius: 8px; font-family: 'Orbitron', sans-serif; font-size: 9px; letter-spacing: 1px; cursor: pointer; font-weight: 700; transition: all 0.2s; white-space: nowrap; }
   .goal-btn:hover { transform: scale(1.05); box-shadow: 0 0 15px rgba(0,245,255,0.4); }
   .file-tag { display: inline-flex; align-items: center; gap: 6px; background: rgba(255, 105, 180, 0.1); border: 1px solid rgba(255, 105, 180, 0.3); border-radius: 20px; padding: 4px 12px; font-size: 11px; color: var(--hot-pink); font-family: 'Orbitron', sans-serif; letter-spacing: 1px; margin-top: 8px; }
@@ -268,6 +359,9 @@
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   .sidebar-list { display:flex; flex-direction:column; gap:8px; }
   .sidebar-item { padding:10px 12px; border:1px solid rgba(255,255,255,0.05); background:rgba(255,255,255,0.02); border-radius:10px; font-size:11px; color:rgba(255,255,255,0.7); }
+  .sidebar-item.clickable { cursor: pointer; transition: all 0.2s ease; }
+  .sidebar-item.clickable:hover { border-color: rgba(0,245,255,0.35); background: rgba(0,245,255,0.08); box-shadow: 0 0 12px rgba(0,245,255,0.12); transform: translateY(-1px); }
+  .sidebar-item.selected { border-color: rgba(255,45,120,0.45); background: rgba(255,45,120,0.12); box-shadow: 0 0 14px rgba(255,45,120,0.16); }
   .sidebar-item strong { color: var(--neon-cyan); }
   @media (max-width: 1150px) { .main { grid-template-columns: 1fr; } .orb-container { width: 220px; height: 220px; } header, footer { flex-direction: column; gap: 10px; align-items: flex-start; } }
 </style>
@@ -290,6 +384,8 @@
     </div>
   </header>
 
+  <div class="ai-toolbar" id="ai-toolbar"></div>
+
   <main class="main">
     <div style="display:flex;flex-direction:column;gap:16px;">
       <div class="panel">
@@ -308,8 +404,15 @@
             <span class="remove" onclick="clearFile()">×</span>
           </div>
         </div>
+        <div class="goal-presets" id="goal-presets">
+          <button class="goal-option selected" type="button" data-goal="make analysis-ready">Analysis Ready</button>
+          <button class="goal-option" type="button" data-goal="clean and dedupe rows">Clean + Dedupe</button>
+          <button class="goal-option" type="button" data-goal="convert csv to json">CSV to JSON</button>
+          <button class="goal-option" type="button" data-goal="convert json to csv">JSON to CSV</button>
+          <button class="goal-option" type="button" data-goal="aggregate by category">Aggregate by Category</button>
+          <button class="goal-option" type="button" data-goal="normalize tags and dates">Normalize Tags + Dates</button>
+        </div>
         <div class="goal-input-wrap">
-          <input class="goal-input" id="goal-input" placeholder="Describe pipeline goal…" type="text" value="make analysis-ready">
           <button class="goal-btn" onclick="startPipeline()">RUN ▶</button>
         </div>
       </div>
@@ -325,7 +428,24 @@
           <div class="sidebar-item"><strong id="sidebar-jobs">0</strong> active jobs</div>
           <div class="sidebar-item"><strong id="sidebar-history">0</strong> history items</div>
           <div class="sidebar-item"><strong id="sidebar-file">—</strong> current file</div>
+          <div class="sidebar-item"><strong id="sidebar-goal">—</strong> current goal</div>
           <div class="sidebar-item"><strong id="sidebar-stage">idle</strong> current stage</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Active Data</div>
+        <div class="sidebar-list">
+          <div class="sidebar-item"><strong id="active-name">—</strong> selected item</div>
+          <div class="sidebar-item"><strong id="active-status">—</strong> status</div>
+          <div class="sidebar-item"><strong id="active-rows">—</strong> rows in</div>
+          <div class="sidebar-item"><strong id="active-out">—</strong> rows out</div>
+          <div class="sidebar-item"><strong id="active-goal">—</strong> goal</div>
+          <div class="sidebar-item"><strong id="active-stage">—</strong> stage</div>
+          <div class="sidebar-item"><strong id="active-updated">—</strong> updated</div>
+          <div class="sidebar-item"><strong id="active-columns">—</strong> date/time/tags</div>
+          <div class="sidebar-item"><strong id="active-explain">—</strong> doing now</div>
+          <div class="sidebar-item" style="white-space:pre-wrap;"><strong>Plan</strong><br><span id="active-actions">—</span></div>
         </div>
       </div>
     </div>
@@ -368,6 +488,11 @@
               <div class="metric-label">Run Time</div>
               <div class="metric-value purple" id="m-time">0s</div>
               <div class="metric-sub">elapsed</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Status</div>
+              <div class="metric-value teal" id="m-status">idle</div>
+              <div class="metric-sub" id="m-status-sub">pipeline state</div>
             </div>
           </div>
           <div class="progress-wrap">
@@ -462,12 +587,28 @@ const STEPS = [
   { id:'duckdb',  name:'DuckDB Logging',     desc:'Store run metadata',             icon:'🦆' },
 ];
 
-let state = { currentStep: -1, status: 'idle', file: null, runCount: 0, startTime: null, progressKey: null };
+const TOOLBAR_ITEMS = [
+  { id:'upload', icon:'📁', label:'Upload', sub:'ingest file' },
+  { id:'profile', icon:'🔎', label:'Profile', sub:'schema scan' },
+  { id:'generate', icon:'🤖', label:'AI Generate', sub:'code synthesis' },
+  { id:'sandbox', icon:'🧪', label:'Sandbox', sub:'validation' },
+  { id:'apply', icon:'⚙️', label:'Apply', sub:'clean data' },
+  { id:'save', icon:'💾', label:'Save', sub:'write output' },
+  { id:'planner', icon:'📋', label:'Planner', sub:'build yaml' },
+  { id:'dag', icon:'▶️', label:'DAG', sub:'execute flow' },
+  { id:'duckdb', icon:'🦆', label:'DuckDB', sub:'log runs' },
+];
+
+let state = { currentStep: -1, status: 'idle', file: null, runCount: 0, startTime: null, pipelineStartedAt: null, stepStartedAt: null, stepDurations: {}, totalRuntimeMs: 0, progressKey: null, goal: '' };
 let logs = [];
 let selectedFile = null;
 let jobsPoll = null;
 let progressPoll = null;
 let clockTimer = null;
+let latestJobs = [];
+let latestHistory = [];
+let selectedSidebarKey = '';
+let selectedGoal = 'make analysis-ready';
 
 function ts() {
   const d = new Date();
@@ -486,18 +627,86 @@ function renderLogs() {
   feed.scrollTop = feed.scrollHeight;
 }
 
+function parseTimestamp(value) {
+  const parsed = value ? Date.parse(value) : NaN;
+  return Number.isFinite(parsed) ? parsed : Date.now();
+}
+
+function formatStepElapsed(ms, live = false) {
+  const safeMs = Math.max(0, ms || 0);
+  if (live) {
+    const totalSeconds = Math.max(0, Math.floor(safeMs / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return minutes > 0 ? `${minutes}m ${String(seconds).padStart(2, '0')}s` : `${seconds}s`;
+  }
+  const minutes = safeMs / 60000;
+  if (minutes < 1) return `${Math.max(1, Math.round(safeMs / 1000))}s`;
+  return `${minutes.toFixed(1)} min`;
+}
+
+function formatCardDuration(entry) {
+  const started = entry.started_at ? parseTimestamp(entry.started_at) : null;
+  const finished = entry.finished_at ? parseTimestamp(entry.finished_at) : null;
+  const base = started ? (finished || Date.now()) - started : entry.duration_ms;
+  if (!base || base < 0) return '';
+  return formatStepElapsed(base);
+}
+
+function syncStepTiming(nextIndex, now = Date.now()) {
+  const currentIndex = state.currentStep;
+  if (currentIndex >= 0 && currentIndex < STEPS.length && nextIndex !== currentIndex) {
+    const currentId = STEPS[currentIndex]?.id;
+    if (currentId) state.stepDurations[currentId] = now - (state.stepStartedAt || now);
+  }
+  if (nextIndex !== currentIndex || !state.stepStartedAt) {
+    state.currentStep = nextIndex;
+    state.stepStartedAt = now;
+  }
+  if (!state.pipelineStartedAt) state.pipelineStartedAt = state.startTime || now;
+}
+
 function renderSteps(activeIndex = state.currentStep) {
   const list = document.getElementById('step-list');
+  const allDone = state.status === 'done';
+  const liveNow = Date.now();
   list.innerHTML = STEPS.map((s, i) => {
     let cls = 'pending', dot = '○';
-    if (i < activeIndex) { cls = 'done'; dot = '✓'; }
+    if (allDone || i < activeIndex) { cls = 'done'; dot = '✓'; }
     else if (i === activeIndex) { cls = 'active'; dot = '◉'; }
+    const durationMs = state.stepDurations[s.id];
+    const isLive = state.status === 'running' && i === activeIndex && !allDone;
+    const timeLabel = isLive
+      ? `live ${formatStepElapsed(liveNow - (state.stepStartedAt || liveNow), true)}`
+      : (durationMs ? `${formatStepElapsed(durationMs)}${cls === 'done' ? '' : ''}` : '');
     return `<div class="step-item ${cls}">
       <div class="step-dot ${cls}">${dot}</div>
       <div class="step-info"><div class="step-name">${s.icon} ${s.name}</div><div class="step-desc">${s.desc}</div></div>
-      ${i < activeIndex ? '<div class="step-time">✓</div>' : ''}
+      ${timeLabel ? `<div class="step-time" style="color:${isLive ? 'var(--neon-teal)' : 'rgba(255,255,255,0.45)'}">${timeLabel}</div>` : ''}
     </div>`;
   }).join('');
+}
+
+function renderToolbar(activeId = STEPS[state.currentStep]?.id, status = state.status) {
+  const toolbar = document.getElementById('ai-toolbar');
+  if (!toolbar) return;
+  const goalChip = `<div class="toolbar-chip ${status === 'running' ? 'active' : 'done'}" data-step="goal">
+    <div class="icon">✨</div>
+    <div class="meta"><div class="label">Goal</div><div class="sub">${state.goal || 'describe pipeline goal'}</div></div>
+  </div>`;
+  toolbar.innerHTML = [goalChip].concat(TOOLBAR_ITEMS.map(item => {
+    let cls = 'pending';
+    const currentIndex = STEPS.findIndex(step => step.id === item.id);
+    const activeIndex = STEPS.findIndex(step => step.id === activeId);
+    if (status === 'error' && item.id === activeId) cls = 'error';
+    else if (currentIndex >= 0 && currentIndex < activeIndex) cls = 'done';
+    else if (item.id === activeId && status === 'running') cls = 'active';
+    else if (item.id === activeId && status === 'done') cls = 'done';
+    return `<div class="toolbar-chip ${cls}" data-step="${item.id}">
+      <div class="icon">${item.icon}</div>
+      <div class="meta"><div class="label">${item.label}</div><div class="sub">${item.sub}</div></div>
+    </div>`;
+  })).join('');
 }
 
 function updateOrb() {
@@ -523,6 +732,26 @@ function updateOrb() {
   document.getElementById('header-status-text').style.color = state.status === 'running' ? 'var(--neon-pink)' : 'var(--neon-teal)';
   document.getElementById('header-dot').style.background = state.status === 'running' ? 'var(--neon-pink)' : 'var(--neon-teal)';
   document.getElementById('sidebar-stage').textContent = state.status === 'running' ? (STEPS[state.currentStep]?.name || 'running').toLowerCase() : state.status;
+  renderToolbar(STEPS[state.currentStep]?.id, state.status);
+}
+
+function updateRuntimeMetric(now = Date.now()) {
+  if (state.status === 'done') {
+    document.getElementById('m-time').textContent = formatStepElapsed(state.totalRuntimeMs || (now - (state.pipelineStartedAt || state.startTime || now)));
+    document.getElementById('m-status').textContent = 'done';
+    document.getElementById('m-status-sub').textContent = 'completed run';
+    return;
+  }
+  if (state.status === 'running') {
+    const liveMs = now - (state.stepStartedAt || state.pipelineStartedAt || state.startTime || now);
+    document.getElementById('m-time').textContent = `step ${formatStepElapsed(liveMs, true)}`;
+    document.getElementById('m-status').textContent = 'running';
+    document.getElementById('m-status-sub').textContent = STEPS[state.currentStep]?.name || 'processing';
+    return;
+  }
+  document.getElementById('m-time').textContent = '0s';
+  document.getElementById('m-status').textContent = state.status || 'idle';
+  document.getElementById('m-status-sub').textContent = state.status === 'error' ? 'needs attention' : 'pipeline state';
 }
 
 function showToast(msg) {
@@ -557,6 +786,18 @@ const dz = document.getElementById('drop-zone');
 dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
 dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
 dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('dragover'); if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); });
+
+document.getElementById('goal-presets').querySelectorAll('.goal-option').forEach(button => {
+  button.addEventListener('click', () => {
+    selectedGoal = button.dataset.goal || selectedGoal;
+    document.getElementById('sidebar-goal').textContent = selectedGoal;
+    document.getElementById('active-goal').textContent = selectedGoal;
+    document.getElementById('goal-presets').querySelectorAll('.goal-option').forEach(option => {
+      option.classList.toggle('selected', option === button);
+    });
+    addLog(`Goal selected: ${selectedGoal}`, 'info');
+  });
+});
 
 function formatCode(code) {
   return code
@@ -594,19 +835,58 @@ function addRunHistory(entry) {
   container.prepend(el);
 }
 
+function setActiveData(entry, source = 'job') {
+  if (!entry) return;
+  selectedSidebarKey = entry.file || entry.name || entry.job || '';
+  state.goal = entry.goal || state.goal || '';
+  document.getElementById('active-name').textContent = entry.file || entry.name || entry.job || '—';
+  document.getElementById('active-status').textContent = entry.status || '—';
+  document.getElementById('active-rows').textContent = entry.rows_in ?? '—';
+  document.getElementById('active-out').textContent = entry.rows_out ?? '—';
+  document.getElementById('active-goal').textContent = entry.goal || state.goal || '—';
+  document.getElementById('active-stage').textContent = entry.stage || source || '—';
+  document.getElementById('active-updated').textContent = entry.updated_at || entry.updated || '—';
+  const roles = entry.roles || {};
+  const detectedColumns = [
+    roles.date_cols?.length ? `date: ${roles.date_cols.join(', ')}` : '',
+    roles.time_cols?.length ? `time: ${roles.time_cols.join(', ')}` : '',
+    roles.tag_cols?.length ? `tags: ${roles.tag_cols.join(', ')}` : '',
+  ].filter(Boolean);
+  document.getElementById('active-columns').textContent = detectedColumns.length ? detectedColumns.join(' | ') : 'no date/time/tag columns detected';
+  document.getElementById('active-explain').textContent = entry.explain || 'scanning, cleaning, and organizing the data';
+  document.getElementById('active-actions').textContent = Array.isArray(entry.actions) && entry.actions.length ? entry.actions.map(a => `• ${a}`).join('\n') : '• scan the file\n• clean text and numbers\n• parse date/time columns\n• normalize tags\n• sort and save';
+  document.getElementById('sidebar-goal').textContent = entry.goal || state.goal || '—';
+  document.getElementById('sidebar-stage').textContent = entry.stage || source || '—';
+  document.getElementById('sidebar-file').textContent = entry.file || entry.name || entry.job || state.file?.name || '—';
+  renderToolbar(STEPS[state.currentStep]?.id, state.status);
+}
+
 async function refreshJobs() {
   try {
     const r = await fetch('/jobs');
     const j = await r.json();
     const jobs = j.jobs || [];
+    latestJobs = jobs;
     const count = j.active_jobs || jobs.length || 0;
     document.getElementById('header-status-text').textContent = `ACTIVE • ${count} JOB${count === 1 ? '' : 'S'}`;
     document.getElementById('orb-status').textContent = 'ACTIVE';
     document.getElementById('orb-job').textContent = count > 0 ? `reading ${count} current job${count === 1 ? '' : 's'}` : 'reading current jobs';
     document.getElementById('sidebar-jobs').textContent = String(count);
     document.getElementById('sidebar-file').textContent = state.file ? state.file.name : (jobs[0]?.name || '—');
+    document.getElementById('sidebar-goal').textContent = state.goal || jobs[0]?.goal || '—';
     const list = document.getElementById('jobs-list');
-    list.innerHTML = jobs.length ? jobs.map(job => `<div class="sidebar-item"><strong>${job.name}</strong><br>${job.status}${job.rows_in ? ` • in ${job.rows_in}` : ''}${job.rows_out ? ` • out ${job.rows_out}` : ''}</div>`).join('') : '<div class="sidebar-item">No jobs yet</div>';
+    list.innerHTML = jobs.length ? jobs.map((job, index) => {
+      const summary = job.goal || job.explain || '';
+      const duration = formatCardDuration(job);
+      const timing = duration ? ` • ${job.status === 'done' ? 'took' : 'live'} ${duration}` : '';
+      return `<div class="sidebar-item clickable ${selectedSidebarKey === job.name ? 'selected' : ''}" data-job-index="${index}"><strong>${job.name}</strong><br>${job.status}${job.goal ? ` • ${job.goal}` : ''}${timing}${job.rows_in ? ` • in ${job.rows_in}` : ''}${job.rows_out ? ` • out ${job.rows_out}` : ''}${summary ? `<br><span style="opacity:.75">${summary}</span>` : ''}</div>`;
+    }).join('') : '<div class="sidebar-item">No jobs yet</div>';
+    list.querySelectorAll('[data-job-index]').forEach(el => {
+      el.addEventListener('click', () => {
+        const job = latestJobs[Number(el.dataset.jobIndex)];
+        if (job) window.__selectSidebarJob(job);
+      });
+    });
   } catch (e) {
     console.warn('jobs refresh failed', e);
   }
@@ -617,19 +897,27 @@ async function refreshHistory() {
     const r = await fetch('/history?limit=10');
     const j = await r.json();
     const items = j.items || [];
+    latestHistory = items;
     document.getElementById('sidebar-history').textContent = String(items.length);
     if (!items.length) {
       document.getElementById('history-feed').textContent = 'No completed jobs yet.';
       return;
     }
-    document.getElementById('history-feed').innerHTML = items.map(item => {
+    document.getElementById('history-feed').innerHTML = items.map((item, index) => {
       const name = item.file || item.job || 'unknown';
       const inRows = item.rows_in ?? '—';
       const outRows = item.rows_out ?? '—';
       const status = item.status || 'done';
       const goal = item.goal || '';
-      return `<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.06)"><div style="color:var(--neon-cyan)">${name}</div><div>status: ${status}</div><div>rows in: ${inRows} • rows out: ${outRows}</div><div style="opacity:.7">${goal}</div></div>`;
+      const duration = formatCardDuration(item);
+      return `<div class="sidebar-item clickable ${selectedSidebarKey === name ? 'selected' : ''}" style="margin-bottom:10px;" data-history-index="${index}"><div style="color:var(--neon-cyan)">${name}</div><div>status: ${status}${duration ? ` • ${duration}` : ''}</div><div>rows in: ${inRows} • rows out: ${outRows}</div><div style="opacity:.7">${goal}</div></div>`;
     }).join('');
+    document.getElementById('history-feed').querySelectorAll('[data-history-index]').forEach(el => {
+      el.addEventListener('click', () => {
+        const item = latestHistory[Number(el.dataset.historyIndex)];
+        if (item) window.__selectSidebarHistory(item);
+      });
+    });
   } catch (e) {
     console.warn('history refresh failed', e);
   }
@@ -641,17 +929,23 @@ async function refreshMetricsFromProgress(key) {
     const r = await fetch(`/progress?file=${encodeURIComponent(key)}`);
     const j = await r.json();
     if (!j || j.status === 'waiting') return;
+    const now = parseTimestamp(j.updated_at || j.finished_at || j.started_at);
+    if (!state.pipelineStartedAt && j.started_at) state.pipelineStartedAt = parseTimestamp(j.started_at);
     if (j.rows_in) document.getElementById('m-rows').textContent = j.rows_in;
     if (j.rows_out) document.getElementById('m-out').textContent = j.rows_out;
+    if (j.goal) { state.goal = j.goal; document.getElementById('sidebar-goal').textContent = j.goal; }
     if (j.stage) document.getElementById('sidebar-stage').textContent = j.stage;
-    if (j.status === 'analyzing') { state.currentStep = 1; addLog('Profiling input…', 'info'); }
-    if (j.status === 'generating_code' || j.status === 'generated_fallback') { state.currentStep = 2; document.getElementById('ai-code-box').innerHTML = formatCode(`def clean(df):\n    return df`); }
-    if (j.status === 'sandbox_ok') { state.currentStep = 3; document.getElementById('m-nulls').textContent = (j.cols?.length || 0); }
+    if (j.status === 'analyzing') { syncStepTiming(1, now); addLog('Profiling input…', 'info'); }
+    if (j.status === 'ready') { syncStepTiming(1, now); }
+    if (j.status === 'generating_code' || j.status === 'generated_fallback') { syncStepTiming(2, now); document.getElementById('ai-code-box').innerHTML = formatCode(`def clean(df):\n    return df`); }
+    if (j.status === 'running') { syncStepTiming(3, now); }
+    if (j.status === 'sandbox_ok') { syncStepTiming(4, now); document.getElementById('m-nulls').textContent = (j.cols?.length || 0); }
     if (j.status === 'done') {
-      state.currentStep = STEPS.length - 1;
+      syncStepTiming(STEPS.length, now);
       state.status = 'done';
+      state.totalRuntimeMs = now - (state.pipelineStartedAt || state.startTime || now);
       document.getElementById('m-out').textContent = j.rows_out ?? document.getElementById('m-out').textContent;
-      document.getElementById('m-time').textContent = Math.max(1, Math.round((Date.now() - (state.startTime || Date.now())) / 1000)) + 's';
+      document.getElementById('m-time').textContent = formatStepElapsed(state.totalRuntimeMs);
       addLog('Cleaning finished', 'ok');
       addRunHistory({ file: state.file?.name, rows_in: j.rows_in, rows_out: j.rows_out });
       addDuckRow(state.file?.name || 'job', 'DONE', `${j.rows_out ?? '—'}`);
@@ -663,6 +957,7 @@ async function refreshMetricsFromProgress(key) {
       document.getElementById('m-rows').textContent = j.analysis.rows ?? document.getElementById('m-rows').textContent;
     }
     renderSteps();
+    updateRuntimeMetric(now);
     updateOrb();
   } catch (e) {
     console.warn('progress poll error', e);
@@ -672,21 +967,26 @@ async function refreshMetricsFromProgress(key) {
 function startPipeline() {
   if (!state.file) { showToast('⚠ Upload a file first'); return; }
   if (state.status === 'running') { showToast('Already running!'); return; }
-  const fileInput = document.getElementById('file-input');
   const form = new FormData();
+  state.goal = selectedGoal || 'make analysis-ready';
   form.append('file', state.file);
-  form.append('goal', document.getElementById('goal-input').value || 'make analysis-ready');
+  form.append('goal', state.goal);
   form.append('output_name', `${state.file.name.replace(/\.[^.]+$/, '')}_clean`);
 
   state.status = 'running';
   state.currentStep = 0;
   state.startTime = Date.now();
+  state.pipelineStartedAt = state.startTime;
+  state.stepStartedAt = state.startTime;
+  state.stepDurations = {};
+  state.totalRuntimeMs = 0;
   document.getElementById('m-time').textContent = '0s';
   document.getElementById('m-rows').textContent = '—';
   document.getElementById('m-out').textContent = '—';
   document.getElementById('m-nulls').textContent = '—';
   document.getElementById('ai-code-box').innerHTML = `<span style="color:rgba(0,245,255,0.4);"># Generating code…</span>`;
   addLog(`Run started — ${state.file.name}`, 'ok');
+  document.getElementById('sidebar-goal').textContent = state.goal;
   renderSteps();
   updateOrb();
 
@@ -694,8 +994,10 @@ function startPipeline() {
     .then(r => r.json())
     .then(data => {
       state.progressKey = data.progress_key;
+      state.goal = data.goal || state.goal;
       document.getElementById('yaml-box').innerHTML = formatYaml(JSON.stringify(data, null, 2));
       document.getElementById('sidebar-file').textContent = data.filename || state.file.name;
+      document.getElementById('sidebar-goal').textContent = data.goal || state.goal;
       document.getElementById('f-runs').textContent = String((parseInt(document.getElementById('f-runs').textContent || '0', 10) || 0) + 1);
       addLog(`Accepted: ${data.filename}`, 'ok');
       if (progressPoll) clearInterval(progressPoll);
@@ -715,12 +1017,22 @@ function updateClock() { document.getElementById('clock').textContent = ts(); se
 function updateFooterMetrics() { document.getElementById('f-cpu').textContent = Math.floor(Math.random() * 40 + 10) + '%'; document.getElementById('f-mem').textContent = Math.floor(Math.random() * 300 + 400) + 'MB'; setTimeout(updateFooterMetrics, 2000); }
 
 renderSteps();
+renderToolbar();
 updateOrb();
 updateClock();
 updateFooterMetrics();
 refreshJobs();
 refreshHistory();
 jobsPoll = setInterval(refreshJobs, 3000);
+clockTimer = setInterval(() => {
+  if (state.status === 'running' || state.status === 'done') {
+    renderSteps();
+    updateRuntimeMetric();
+  }
+}, 1000);
+
+window.__selectSidebarJob = function(job) { setActiveData(job, 'active job'); addLog(`Selected job: ${job.name}`, 'info'); };
+window.__selectSidebarHistory = function(item) { setActiveData(item, 'history'); addLog(`Selected history: ${item.file || item.job || 'unknown'}`, 'info'); };
 
 </script>
 </body>

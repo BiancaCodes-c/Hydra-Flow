@@ -2,6 +2,7 @@ from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Form
 from fastapi.responses import HTMLResponse
 from pathlib import Path
 import asyncio, json
+from datetime import datetime, timezone
 
 from agent.cleaner import CleaningAgent
 
@@ -33,6 +34,16 @@ def home():
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+def _parse_iso_dt(value: str | None):
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+    except Exception:
+        return None
 
 
 @app.post("/upload")
@@ -122,12 +133,24 @@ def jobs():
             data = json.loads(p.read_text(encoding='utf-8'))
         except Exception:
             data = {"status": "error"}
+        started_at = _parse_iso_dt(data.get("started_at"))
+        finished_at = _parse_iso_dt(data.get("finished_at"))
+        anchor = finished_at or datetime.now(timezone.utc)
+        duration_ms = int((anchor - started_at).total_seconds() * 1000) if started_at else None
         jobs.append({
             "name": p.stem,
             "status": data.get("status", "unknown"),
             "rows_in": data.get("rows_in"),
             "rows_out": data.get("rows_out"),
             "stage": data.get("stage"),
+            "goal": data.get("goal"),
+            "actions": data.get("actions", []),
+            "explain": data.get("explain"),
+            "roles": data.get("roles", {}),
+            "started_at": data.get("started_at"),
+            "updated_at": data.get("updated_at"),
+            "finished_at": data.get("finished_at"),
+            "duration_ms": duration_ms,
         })
     active_jobs = [job for job in jobs if job.get("status") not in {"done", "error"}]
     return {"active_jobs": len(active_jobs), "jobs": active_jobs, "all_jobs": jobs}

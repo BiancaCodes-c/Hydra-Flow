@@ -34,18 +34,70 @@ class CleaningAgent:
     def __init__(self):
         self.max_retries = 2
 
-    async def analyze(self, file_path: str) -> Dict[str, Any]:
+    def _write_progress(self, file_path: str, payload: Dict[str, Any]) -> None:
+        try:
+            progress_dir = Path('state/progress')
+            progress_dir.mkdir(parents=True, exist_ok=True)
+            progress_file = progress_dir / f"{Path(file_path).stem}.json"
+            existing = {}
+            if progress_file.exists():
+                try:
+                    existing = json.loads(progress_file.read_text(encoding='utf-8'))
+                except Exception:
+                    existing = {}
+            now = datetime.now(timezone.utc).isoformat()
+            merged = {**existing, **payload}
+            merged["started_at"] = merged.get("started_at") or now
+            merged["updated_at"] = now
+            if merged.get("status") == "done":
+                merged["finished_at"] = now
+            progress_file.write_text(json.dumps(merged))
+        except Exception:
+            pass
+
+    def _infer_column_roles(self, profile: Dict[str, Any]) -> Dict[str, list]:
+        date_cols, time_cols, tag_cols, id_cols = [], [], [], []
+        for col in profile.get("columns", []):
+            name = col["name"].lower()
+            if "date" in name or "day" in name or "created" in name or "updated" in name:
+                date_cols.append(col["name"])
+            if "time" in name or "hour" in name or "timestamp" in name:
+                time_cols.append(col["name"])
+            if "tag" in name or "tags" in name or "category" in name or "label" in name:
+                tag_cols.append(col["name"])
+            if name.endswith("id") or name == "id" or name.endswith("_id"):
+                id_cols.append(col["name"])
+        return {"date_cols": date_cols, "time_cols": time_cols, "tag_cols": tag_cols, "id_cols": id_cols}
+
+    def _build_plan(self, profile: Dict[str, Any], user_intent: str) -> Dict[str, Any]:
+        roles = self._infer_column_roles(profile)
+        actions = [
+            "scan the file and profile each column",
+            "strip whitespace from text fields",
+            "coerce numeric fields where possible",
+        ]
+        if roles["date_cols"]:
+            actions.append(f"parse date columns: {', '.join(roles['date_cols'])}")
+            actions.append("sort rows by date so the data is organized chronologically")
+        if roles["time_cols"]:
+            actions.append(f"parse time columns: {', '.join(roles['time_cols'])}")
+            actions.append("use time columns to keep event order consistent")
+        if roles["tag_cols"]:
+            actions.append(f"normalize tag columns: {', '.join(roles['tag_cols'])}")
+            actions.append("split comma-separated tags into individual tags when present")
+        if roles["id_cols"]:
+            actions.append(f"dedupe by ids when present: {', '.join(roles['id_cols'])}")
+        if not roles["date_cols"] and not roles["time_cols"] and not roles["tag_cols"]:
+            actions.append("no obvious date/time/tag columns found, so keep the raw structure and clean obvious formatting issues")
+        explain = "This run profiles the file, detects date/time/tag columns, cleans text and numeric values, sorts chronologically when possible, and writes the cleaned result plus run history."
+        return {"roles": roles, "actions": actions, "explain": explain, "goal": user_intent}
+
+    async def analyze(self, file_path: str, user_intent: str = "") -> Dict[str, Any]:
         """Profile data and suggest cleaning strategy"""
         profile = profile_file(file_path)
         client = _openai_client_or_none()
-        # initialize progress file
-        try:
-            prog_stem = Path(file_path).stem
-            prog_dir = Path('state/progress')
-            prog_dir.mkdir(parents=True, exist_ok=True)
-            (prog_dir / f"{prog_stem}.json").write_text(json.dumps({"status": "analyzing", "file": str(file_path)}))
-        except Exception:
-            pass
+        plan = self._build_plan(profile, user_intent)
+        self._write_progress(file_path, {"status": "analyzing", "file": str(file_path), "goal": user_intent, "stage": "profile", **plan})
         if client is None:
             # heuristic analysis
             issues = []
@@ -59,11 +111,8 @@ class CleaningAgent:
                     issues.append(f"date_like:{col['name']}")
             if pk:
                 issues.append(f"likely_pk:{pk}")
-            res = {"issues": issues, "primary_key": pk, "strategy": "Heuristic: strip strings, coerce types, drop empty cols, dedupe if pk."}
-            try:
-                (Path('state/progress') / f"{Path(file_path).stem}.json").write_text(json.dumps({"status":"ready","analysis":res}))
-            except Exception:
-                pass
+            res = {"issues": issues, "primary_key": pk, "strategy": "Heuristic: strip strings, coerce types, drop empty cols, dedupe if pk.", "goal": user_intent, **plan}
+            self._write_progress(file_path, {"status":"ready","analysis":res, "goal": user_intent, "stage": "profile", **plan})
             return res
 
         prompt = f"""
@@ -80,26 +129,28 @@ class CleaningAgent:
                       {"role":"user","content":prompt}]
         )
         result = json.loads(resp.choices[0].message.content)
-        try:
-            (Path('state/progress') / f"{Path(file_path).stem}.json").write_text(json.dumps({"status":"ready","analysis":result}))
-        except Exception:
-            pass
+        result["goal"] = user_intent
+        result.update(plan)
+        self._write_progress(file_path, {"status":"ready","analysis":result, "goal": user_intent, "stage": "profile", **plan})
         return result
 
     async def generate_code(self, file_path: str, issues: Dict, user_intent: str = "") -> str:
         """Generate cleaning code based on issues + user intent"""
         profile = profile_file(file_path)
+        plan = self._build_plan(profile, user_intent)
         client = _openai_client_or_none()
         # indicate generation started
-        try:
-            (Path('state/progress') / f"{Path(file_path).stem}.json").write_text(json.dumps({"status":"generating_code"}))
-        except Exception:
-            pass
+        self._write_progress(file_path, {"status":"generating_code", "goal": user_intent, "stage": "generate", **plan})
         if client is None:
             # simple deterministic cleaner
+            date_cols = plan["roles"]["date_cols"]
+            time_cols = plan["roles"]["time_cols"]
+            tag_cols = plan["roles"]["tag_cols"]
+            sort_cols = date_cols + time_cols
+            tag_col = tag_cols[0] if tag_cols else None
             code = (
                 "def clean(df: pl.DataFrame) -> pl.DataFrame:\n"
-                "    # basic fallback cleaner: strip strings, coerce numbers, drop all-empty cols, dedupe\n"
+                "    # basic fallback cleaner: strip strings, coerce numbers, parse date/time, normalize tags, dedupe\n"
                 "    for c in df.columns:\n"
                 "        try:\n"
                 "            if df[c].dtype == pl.Utf8:\n"
@@ -111,14 +162,45 @@ class CleaningAgent:
                 "            df = df.with_columns(pl.col(c).cast(pl.Float64).alias(c))\n"
                 "        except Exception:\n"
                 "            pass\n"
+            )
+            for col in date_cols:
+                code += (
+                    f"    try:\n"
+                    f"        df = df.with_columns(pl.col('{col}').cast(pl.Utf8).str.strptime(pl.Date, strict=False, exact=False).alias('{col}'))\n"
+                    f"    except Exception:\n"
+                    f"        pass\n"
+                )
+            for col in time_cols:
+                code += (
+                    f"    try:\n"
+                    f"        df = df.with_columns(pl.col('{col}').cast(pl.Utf8).str.strptime(pl.Datetime, strict=False, exact=False).alias('{col}'))\n"
+                    f"    except Exception:\n"
+                    f"        pass\n"
+                )
+            if tag_col:
+                code += (
+                    f"    try:\n"
+                    f"            df = df.with_columns(pl.col('{tag_col}').cast(pl.Utf8).str.to_lowercase().alias('{tag_col}'))\n"
+                    f"            df = df.with_columns(pl.col('{tag_col}').str.split(',').alias('{tag_col}_list'))\n"
+                    f"    except Exception:\n"
+                    f"        pass\n"
+                )
+            code += (
                 "    df = df.drop_nulls(how='all')\n"
+            )
+            if sort_cols:
+                sort_expr = ", ".join([f"'{c}'" for c in sort_cols])
+                code += (
+                    f"    try:\n"
+                    f"        df = df.sort([{sort_expr}])\n"
+                    f"    except Exception:\n"
+                    f"        pass\n"
+                )
+            code += (
                 "    df = df.unique()\n"
                 "    return df\n"
             )
-            try:
-                (Path('state/progress') / f"{Path(file_path).stem}.json").write_text(json.dumps({"status":"generated_fallback", "test": test}))
-            except Exception:
-                pass
+            self._write_progress(file_path, {"status":"generated_fallback", "goal": user_intent, "stage": "generate", **plan})
             return code
 
         prompt = f"""
@@ -126,8 +208,12 @@ class CleaningAgent:
         User intent: {user_intent or "Make this analysis-ready"}
         Detected issues: {json.dumps(issues)}
         Profile: {json.dumps(profile)}
+        Plan: {json.dumps(plan)}
 
         Write the clean() function. Handle ALL detected issues.
+        If date columns exist, parse them and sort by them.
+        If time columns exist, parse them as datetimes and keep event order.
+        If tag columns exist, normalize them, and if comma-separated, split them into individual tags.
         """
         resp = await client.chat.completions.create(
             model="gpt-4o-mini", temperature=0.1,
@@ -163,26 +249,20 @@ class CleaningAgent:
         Main entry: file_path -> cleaned DataFrame + code used
         """
         print(f"[cyan]CleaningAgent: Analyzing {file_path}[/cyan]")
-        analysis = await self.analyze(file_path)
+        analysis = await self.analyze(file_path, user_intent)
         print(f"[yellow]Issues found: {', '.join(analysis.get('issues', []))}[/yellow]")
 
         code = await self.generate_code(file_path, analysis, user_intent)
 
         # update progress: code generated
-        try:
-            (Path('state/progress') / f"{Path(file_path).stem}.json").write_text(json.dumps({"status":"running", "stage": "sandbox"}))
-        except Exception:
-            pass
+        self._write_progress(file_path, {"status":"running", "stage": "sandbox", "goal": user_intent, **self._build_plan(profile_file(file_path), user_intent)})
 
         for attempt in range(self.max_retries):
             test = run_sandbox(code, file_path)
             if test.get("success"):
                 print(f"[green]✓ Clean successful: {test['rows']} rows, {len(test['cols'])} cols[/green]")
                 # write progress success
-                try:
-                    (Path('state/progress') / f"{Path(file_path).stem}.json").write_text(json.dumps({"status":"sandbox_ok","rows_in": test.get('rows'), "cols": test.get('cols')}))
-                except Exception:
-                    pass
+                self._write_progress(file_path, {"status":"sandbox_ok","rows_in": test.get('rows'), "cols": test.get('cols'), "goal": user_intent, "stage": "apply"})
                 df = pl.read_csv(file_path) if file_path.endswith('.csv') else pl.read_parquet(file_path)
                 local_ns = {"pl": pl, "df": df}
                 exec(code, {}, local_ns)
@@ -193,14 +273,11 @@ class CleaningAgent:
                     Path(f"{save_to}.py").write_text(f"import polars as pl\n\n{code}\n")
                     clean_df.write_parquet(f"{save_to}.parquet")
                     print(f"[green]✓ Saved code to {save_to}.py, data to {save_to}.parquet[/green]")
+                    stem = Path(file_path).stem
+                    self._write_progress(file_path, {"status":"done","rows_in": len(df), "rows_out": len(clean_df), "goal": user_intent, "stage": "done", "finished_at": datetime.now(timezone.utc).isoformat()})
                     try:
-                        stem = Path(file_path).stem
-                        progress_dir = Path('state/progress')
                         history_dir = Path('state/history')
-                        progress_dir.mkdir(parents=True, exist_ok=True)
                         history_dir.mkdir(parents=True, exist_ok=True)
-                        result = {"status":"done","rows_out": len(clean_df)}
-                        (progress_dir / f"{stem}.json").write_text(json.dumps(result))
                         history_entry = {
                             "file": Path(file_path).name,
                             "job": stem,
@@ -209,6 +286,9 @@ class CleaningAgent:
                             "rows_out": len(clean_df),
                             "output": f"{save_to}.parquet",
                             "status": "done",
+                            "started_at": self._read_progress_started_at(file_path),
+                            "finished_at": datetime.now(timezone.utc).isoformat(),
+                            "duration_ms": self._read_progress_duration_ms(file_path),
                             "updated_at": datetime.now(timezone.utc).isoformat(),
                         }
                         with open(history_dir / "history.jsonl", "a", encoding="utf-8") as fh:
@@ -216,6 +296,36 @@ class CleaningAgent:
                     except Exception:
                         pass
                 return clean_df, code
+
+            def _read_progress_started_at(self, file_path: str) -> str | None:
+                try:
+                    progress_file = Path('state/progress') / f"{Path(file_path).stem}.json"
+                    if not progress_file.exists():
+                        return None
+                    data = json.loads(progress_file.read_text(encoding='utf-8'))
+                    return data.get('started_at')
+                except Exception:
+                    return None
+
+            def _read_progress_duration_ms(self, file_path: str) -> int | None:
+                try:
+                    progress_file = Path('state/progress') / f"{Path(file_path).stem}.json"
+                    if not progress_file.exists():
+                        return None
+                    data = json.loads(progress_file.read_text(encoding='utf-8'))
+                    started_at = data.get('started_at')
+                    finished_at = data.get('finished_at') or datetime.now(timezone.utc).isoformat()
+                    if not started_at:
+                        return None
+                    started = datetime.fromisoformat(started_at.replace('Z', '+00:00'))
+                    ended = datetime.fromisoformat(finished_at.replace('Z', '+00:00'))
+                    if started.tzinfo is None:
+                        started = started.replace(tzinfo=timezone.utc)
+                    if ended.tzinfo is None:
+                        ended = ended.replace(tzinfo=timezone.utc)
+                    return int((ended - started).total_seconds() * 1000)
+                except Exception:
+                    return None
             else:
                 print(f"[red]Attempt {attempt+1} failed: {test.get('error')}[/red]")
                 if attempt < self.max_retries - 1:
