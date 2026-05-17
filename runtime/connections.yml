@@ -1,0 +1,3 @@
+postgres_prod: "postgresql://user:pass@db.example.com:5432/prod"
+s3_prod: "s3://bucket-name"
+stripe_api: "https://api.stripe.com"

@@ -1,0 +1,6 @@
+name: revenue_v2
+generated_by: agent
+steps:
+  - extract: orders
+  - transform: stg_orders
+  - transform: fct_revenue_v2

@@ -1,0 +1,3 @@
+defaults:
+  retries: 3
+  timeout: "30m"

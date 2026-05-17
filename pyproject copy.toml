@@ -1,0 +1,24 @@
+
+[project]
+name = "dataforge"
+version = "0.1.0"
+dependencies = [
+	"duckdb>=1.0.0",
+	"polars>=1.1.0",
+	"pydantic>=2.7",
+	"networkx>=3.3",
+	"typer[all]>=0.12",
+	"pyyaml>=6.0",
+	"textual>=0.66",
+	"openai>=1.35",
+	"rich>=13.7",
+	"python-dotenv>=1.0",
+	"aiofiles>=24.1"
+]
+
+[project.scripts]
+dataforge = "core.cli:app"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"

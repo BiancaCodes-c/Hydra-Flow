@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "dataforge"
+version = "0.1.0"
+description = "Lightweight data engineering platform"
+authors = ["Your Name <you@example.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+duckdb = "*"
+polars = "*"
+pydantic = "*"
+textual = "*"
+typer = "*"
+openai = "*"
+rich = "*"
+pyyaml = "*"
+fastapi = "*"
+uvicorn = "*"
+python-multipart = "*"
+aiofiles = "*"
+
+[tool.poetry.dev-dependencies]
+pytest = "*"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,4 @@
+name: sales
+steps:
+  - extract: raw_orders
+  - transform: stg_orders

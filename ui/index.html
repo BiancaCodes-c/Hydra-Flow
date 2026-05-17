@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataFlow</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --neon-pink: #FF2D78;
+    --neon-cyan: #00F5FF;
+    --neon-purple: #BF00FF;
+    --neon-teal: #00FFD1;
+    --neon-yellow: #FFE600;
+    --hot-pink: #FF69B4;
+    --deep-blue: #0A0A2E;
+    --dark-blue: #050518;
+    --mid-blue: #0D0D40;
+    --panel-bg: rgba(10, 10, 46, 0.85);
+    --panel-border: rgba(0, 245, 255, 0.2);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--dark-blue);
+    font-family: 'Space Grotesk', sans-serif;
+    color: #fff;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+  .bg-grid {
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .bg-glow {
+    position: fixed;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(191,0,255,0.12) 0%, transparent 70%);
+    top: -200px; left: -100px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .bg-glow2 {
+    position: fixed;
+    width: 500px; height: 500px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,45,120,0.10) 0%, transparent 70%);
+    bottom: -100px; right: -100px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .app {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    min-height: 100vh;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 32px;
+    border-bottom: 1px solid rgba(0, 245, 255, 0.15);
+    background: rgba(5, 5, 24, 0.9);
+    backdrop-filter: blur(10px);
+  }
+  .logo {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 20px;
+    font-weight: 900;
+    background: linear-gradient(90deg, var(--neon-cyan), var(--neon-pink));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 2px;
+  }
+  .logo-sub {
+    font-size: 10px;
+    color: rgba(0, 245, 255, 0.5);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    font-family: 'Orbitron', sans-serif;
+    margin-top: 2px;
+  }
+  .header-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 255, 209, 0.08);
+    border: 1px solid rgba(0, 255, 209, 0.3);
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 12px;
+    color: var(--neon-teal);
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 1px;
+  }
+  .pulse-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--neon-teal);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 6px var(--neon-teal); }
+    50% { opacity: 0.4; transform: scale(0.8); box-shadow: none; }
+  }
+  .main {
+    display: grid;
+    grid-template-columns: 280px 1fr 280px;
+    gap: 20px;
+    padding: 24px;
+    align-items: start;
+  }
+  .panel {
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 16px;
+    padding: 20px;
+    backdrop-filter: blur(8px);
+  }
+  .panel-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--neon-cyan);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .panel-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(0,245,255,0.3), transparent);
+  }
+  .center-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+  .orb-container {
+    position: relative;
+    width: 260px;
+    height: 260px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .orb-ring { position: absolute; border-radius: 50%; border: 2px solid transparent; }
+  .ring1 { width: 260px; height: 260px; border-color: rgba(255, 45, 120, 0.6); border-top-color: var(--neon-pink); animation: spin 3s linear infinite; box-shadow: 0 0 20px rgba(255,45,120,0.3), inset 0 0 20px rgba(255,45,120,0.05); }
+  .ring2 { width: 220px; height: 220px; border-color: rgba(0, 245, 255, 0.4); border-right-color: var(--neon-cyan); border-bottom-color: var(--neon-cyan); animation: spin 2s linear infinite reverse; box-shadow: 0 0 15px rgba(0,245,255,0.2), inset 0 0 15px rgba(0,245,255,0.05); }
+  .ring3 { width: 180px; height: 180px; border-color: rgba(191, 0, 255, 0.4); border-left-color: var(--neon-purple); animation: spin 4s linear infinite; box-shadow: 0 0 15px rgba(191,0,255,0.2); }
+  .ring4 { width: 140px; height: 140px; border-color: rgba(0, 255, 209, 0.3); border-top-color: var(--neon-teal); border-bottom-color: var(--neon-teal); animation: spin 1.5s linear infinite reverse; }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .orb-core {
+    position: relative;
+    z-index: 10;
+    width: 100px; height: 100px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.15), rgba(10,10,46,0.9));
+    border: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 40px rgba(255,45,120,0.3), 0 0 80px rgba(0,245,255,0.1), inset 0 0 20px rgba(191,0,255,0.2);
+    animation: orb-breathe 3s ease-in-out infinite;
+  }
+  @keyframes orb-breathe {
+    0%, 100% { box-shadow: 0 0 40px rgba(255,45,120,0.3), 0 0 80px rgba(0,245,255,0.1), inset 0 0 20px rgba(191,0,255,0.2); }
+    50% { box-shadow: 0 0 60px rgba(255,45,120,0.5), 0 0 120px rgba(0,245,255,0.2), inset 0 0 30px rgba(191,0,255,0.3); }
+  }
+  .orb-status-text { font-family: 'Orbitron', sans-serif; font-size: 9px; color: var(--neon-cyan); letter-spacing: 1px; text-align: center; line-height: 1.4; }
+  .orb-job { font-family: 'Orbitron', sans-serif; font-size: 7px; color: var(--hot-pink); letter-spacing: 0.5px; text-align: center; margin-top: 4px; }
+  .orb-pct { font-family: 'Orbitron', sans-serif; font-size: 18px; font-weight: 900; background: linear-gradient(135deg, var(--neon-cyan), var(--neon-pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .upload-zone {
+    width: 100%;
+    border: 2px dashed rgba(0, 245, 255, 0.3);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: rgba(0, 245, 255, 0.03);
+    position: relative;
+    overflow: hidden;
+  }
+  .upload-zone:hover { border-color: var(--neon-cyan); background: rgba(0, 245, 255, 0.07); box-shadow: 0 0 20px rgba(0,245,255,0.1); }
+  .upload-zone.dragover { border-color: var(--neon-pink); background: rgba(255, 45, 120, 0.07); box-shadow: 0 0 30px rgba(255,45,120,0.2); }
+  .upload-icon { font-size: 32px; margin-bottom: 8px; display: block; }
+  .upload-label { color: var(--neon-cyan); font-family: 'Orbitron', sans-serif; font-size: 10px; letter-spacing: 1px; }
+  .upload-sub { font-size: 11px; color: rgba(255,255,255,0.3); margin-top: 4px; }
+  .upload-btn { margin-top: 12px; background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple)); border: none; color: white; padding: 8px 20px; border-radius: 20px; font-family: 'Orbitron', sans-serif; font-size: 10px; letter-spacing: 2px; cursor: pointer; box-shadow: 0 0 20px rgba(255,45,120,0.4); transition: all 0.2s; text-transform: uppercase; }
+  .upload-btn:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(255,45,120,0.6); }
+  .step-list { display: flex; flex-direction: column; gap: 8px; }
+  .step-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05); background: rgba(255,255,255,0.02); transition: all 0.3s; cursor: pointer; position: relative; overflow: hidden; }
+  .step-item::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 2px 0 0 2px; }
+  .step-item.done::before { background: var(--neon-teal); }
+  .step-item.active::before { background: var(--neon-pink); animation: blink-bar 1s ease-in-out infinite alternate; }
+  .step-item.pending::before { background: rgba(255,255,255,0.1); }
+  .step-item.fail::before { background: #FF4444; }
+  @keyframes blink-bar { from { opacity: 1; box-shadow: 0 0 8px var(--neon-pink); } to { opacity: 0.5; box-shadow: none; } }
+  .step-item.active { background: rgba(255, 45, 120, 0.08); border-color: rgba(255, 45, 120, 0.2); box-shadow: 0 0 15px rgba(255,45,120,0.1); }
+  .step-item.done { background: rgba(0, 255, 209, 0.04); border-color: rgba(0, 255, 209, 0.1); }
+  .step-dot { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; font-weight: 700; }
+  .step-dot.done { background: rgba(0, 255, 209, 0.15); color: var(--neon-teal); border: 1px solid rgba(0,255,209,0.4); }
+  .step-dot.active { background: rgba(255, 45, 120, 0.15); color: var(--neon-pink); border: 1px solid rgba(255,45,120,0.4); animation: spin 2s linear infinite; }
+  .step-dot.pending { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.3); border: 1px solid rgba(255,255,255,0.08); }
+  .step-dot.fail { background: rgba(255,68,68,0.15); color: #FF4444; border: 1px solid rgba(255,68,68,0.4); }
+  .step-info { flex: 1; min-width: 0; }
+  .step-name { font-size: 11px; color: rgba(255,255,255,0.85); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .step-desc { font-size: 10px; color: rgba(255,255,255,0.35); margin-top: 1px; }
+  .step-time { font-size: 10px; color: rgba(255,255,255,0.3); font-family: 'Orbitron', sans-serif; flex-shrink: 0; }
+  .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .metric-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 12px; }
+  .metric-label { font-size: 9px; color: rgba(255,255,255,0.4); letter-spacing: 2px; text-transform: uppercase; font-family: 'Orbitron', sans-serif; }
+  .metric-value { font-size: 20px; font-weight: 700; font-family: 'Orbitron', sans-serif; margin-top: 4px; }
+  .metric-value.pink { color: var(--neon-pink); text-shadow: 0 0 10px rgba(255,45,120,0.5); }
+  .metric-value.cyan { color: var(--neon-cyan); text-shadow: 0 0 10px rgba(0,245,255,0.5); }
+  .metric-value.teal { color: var(--neon-teal); text-shadow: 0 0 10px rgba(0,255,209,0.5); }
+  .metric-value.purple { color: var(--neon-purple); text-shadow: 0 0 10px rgba(191,0,255,0.5); }
+  .metric-sub { font-size: 10px; color: rgba(255,255,255,0.25); margin-top: 2px; }
+  .progress-wrap { margin-top: 4px; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 10px; color: rgba(255,255,255,0.4); margin-bottom: 6px; font-family: 'Orbitron', sans-serif; letter-spacing: 1px; }
+  .progress-bar { height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 3px; transition: width 0.8s ease; position: relative; }
+  .progress-fill::after { content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 20px; background: rgba(255,255,255,0.4); filter: blur(4px); animation: shimmer 1.5s ease-in-out infinite; }
+  @keyframes shimmer { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
+  .fill-pink { background: linear-gradient(90deg, var(--neon-purple), var(--neon-pink)); }
+  .fill-cyan { background: linear-gradient(90deg, var(--neon-teal), var(--neon-cyan)); }
+  .log-feed { height: 140px; overflow-y: auto; font-family: monospace; font-size: 11px; color: rgba(255,255,255,0.5); background: rgba(0,0,0,0.3); border-radius: 8px; padding: 10px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 4px; }
+  .log-feed::-webkit-scrollbar { width: 4px; }
+  .log-feed::-webkit-scrollbar-thumb { background: rgba(0,245,255,0.2); border-radius: 2px; }
+  .log-line { display: flex; gap: 8px; }
+  .log-time { color: rgba(0,245,255,0.4); flex-shrink: 0; }
+  .log-msg.ok { color: var(--neon-teal); }
+  .log-msg.err { color: #FF4444; }
+  .log-msg.info { color: rgba(255,255,255,0.5); }
+  .log-msg.warn { color: var(--neon-yellow); }
+  footer { display: flex; align-items: center; justify-content: space-between; padding: 10px 32px; border-top: 1px solid rgba(255,255,255,0.05); font-size: 11px; color: rgba(255,255,255,0.2); font-family: 'Orbitron', sans-serif; letter-spacing: 2px; background: rgba(5,5,24,0.9); }
+  .footer-ticker { display: flex; gap: 24px; }
+  .ticker-item { display: flex; gap: 6px; }
+  .ticker-label { color: rgba(255,255,255,0.2); }
+  .ticker-val { color: var(--neon-cyan); }
+  .goal-input-wrap { display: flex; gap: 8px; margin-top: 12px; }
+  .goal-input { flex: 1; background: rgba(0,0,0,0.4); border: 1px solid rgba(0, 245, 255, 0.2); border-radius: 8px; padding: 8px 12px; color: white; font-size: 12px; font-family: 'Space Grotesk', sans-serif; outline: none; transition: border-color 0.2s; }
+  .goal-input:focus { border-color: var(--neon-cyan); box-shadow: 0 0 10px rgba(0,245,255,0.1); }
+  .goal-input::placeholder { color: rgba(255,255,255,0.2); }
+  .goal-btn { background: linear-gradient(135deg, var(--neon-cyan), var(--neon-teal)); border: none; color: var(--dark-blue); padding: 8px 14px; border-radius: 8px; font-family: 'Orbitron', sans-serif; font-size: 9px; letter-spacing: 1px; cursor: pointer; font-weight: 700; transition: all 0.2s; white-space: nowrap; }
+  .goal-btn:hover { transform: scale(1.05); box-shadow: 0 0 15px rgba(0,245,255,0.4); }
+  .file-tag { display: inline-flex; align-items: center; gap: 6px; background: rgba(255, 105, 180, 0.1); border: 1px solid rgba(255, 105, 180, 0.3); border-radius: 20px; padding: 4px 12px; font-size: 11px; color: var(--hot-pink); font-family: 'Orbitron', sans-serif; letter-spacing: 1px; margin-top: 8px; }
+  .file-tag .remove { cursor: pointer; opacity: 0.5; transition: opacity 0.2s; font-size: 14px; line-height: 1; }
+  .file-tag .remove:hover { opacity: 1; }
+  #file-input { display: none; }
+  .toast { position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%) translateY(20px); background: rgba(10,10,46,0.95); border: 1px solid var(--neon-pink); border-radius: 12px; padding: 12px 24px; font-family: 'Orbitron', sans-serif; font-size: 11px; color: var(--neon-pink); letter-spacing: 1px; opacity: 0; transition: all 0.4s; z-index: 1000; box-shadow: 0 0 30px rgba(255,45,120,0.3); pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .sidebar-list { display:flex; flex-direction:column; gap:8px; }
+  .sidebar-item { padding:10px 12px; border:1px solid rgba(255,255,255,0.05); background:rgba(255,255,255,0.02); border-radius:10px; font-size:11px; color:rgba(255,255,255,0.7); }
+  .sidebar-item strong { color: var(--neon-cyan); }
+  @media (max-width: 1150px) { .main { grid-template-columns: 1fr; } .orb-container { width: 220px; height: 220px; } header, footer { flex-direction: column; gap: 10px; align-items: flex-start; } }
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+<div class="bg-glow2"></div>
+
+<div class="app">
+  <header>
+    <div>
+      <div class="logo">✦ DATAFLOW ✦</div>
+      <div class="logo-sub">AI Pipeline Engine</div>
+    </div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+      <div class="header-status"><div class="pulse-dot" id="header-dot"></div><span id="header-status-text">SYSTEM ONLINE</span></div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.3);font-family:'Orbitron',sans-serif;letter-spacing:1px;" id="clock">--:--:--</div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div class="panel">
+        <div class="panel-title">Upload Data</div>
+        <div class="upload-zone" id="drop-zone">
+          <span class="upload-icon">📂</span>
+          <div class="upload-label">Drop CSV, JSON, or Parquet</div>
+          <div class="upload-sub">or click to browse</div>
+          <button class="upload-btn" onclick="document.getElementById('file-input').click()">Select File</button>
+        </div>
+        <input type="file" id="file-input" accept=".csv,.json,.jsonl,.ndjson,.parquet,.pq">
+        <div id="file-tag-container" style="display:none;">
+          <div class="file-tag">
+            <span>📄</span>
+            <span id="file-name-display"></span>
+            <span class="remove" onclick="clearFile()">×</span>
+          </div>
+        </div>
+        <div class="goal-input-wrap">
+          <input class="goal-input" id="goal-input" placeholder="Describe pipeline goal…" type="text" value="make analysis-ready">
+          <button class="goal-btn" onclick="startPipeline()">RUN ▶</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Pipeline Steps</div>
+        <div class="step-list" id="step-list"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Sidebar</div>
+        <div class="sidebar-list">
+          <div class="sidebar-item"><strong id="sidebar-jobs">0</strong> active jobs</div>
+          <div class="sidebar-item"><strong id="sidebar-history">0</strong> history items</div>
+          <div class="sidebar-item"><strong id="sidebar-file">—</strong> current file</div>
+          <div class="sidebar-item"><strong id="sidebar-stage">idle</strong> current stage</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="center-col">
+      <div style="display:flex;justify-content:center;">
+        <div class="orb-container">
+          <div class="orb-ring ring1"></div>
+          <div class="orb-ring ring2"></div>
+          <div class="orb-ring ring3"></div>
+          <div class="orb-ring ring4"></div>
+          <div class="orb-core">
+            <div class="orb-pct" id="orb-pct">0%</div>
+            <div class="orb-status-text" id="orb-status">ACTIVE</div>
+            <div class="orb-job" id="orb-job">reading current jobs</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="width:100%;">
+        <div class="panel">
+          <div class="panel-title">System Metrics</div>
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-label">Rows In</div>
+              <div class="metric-value pink" id="m-rows">—</div>
+              <div class="metric-sub">raw input</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Rows Out</div>
+              <div class="metric-value cyan" id="m-out">—</div>
+              <div class="metric-sub">cleaned</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Nulls Fixed</div>
+              <div class="metric-value teal" id="m-nulls">—</div>
+              <div class="metric-sub">imputed</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Run Time</div>
+              <div class="metric-value purple" id="m-time">0s</div>
+              <div class="metric-sub">elapsed</div>
+            </div>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-label"><span>CLEANING</span><span id="clean-pct">0%</span></div>
+            <div class="progress-bar"><div class="progress-fill fill-pink" id="clean-bar" style="width:0%"></div></div>
+          </div>
+          <div class="progress-wrap" style="margin-top:10px;">
+            <div class="progress-label"><span>PIPELINE</span><span id="pipe-pct">0%</span></div>
+            <div class="progress-bar"><div class="progress-fill fill-cyan" id="pipe-bar" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="width:100%;">
+        <div class="panel">
+          <div class="panel-title">Recent Runs</div>
+          <div id="run-history" style="display:flex;flex-direction:column;gap:6px;">
+            <div style="font-size:11px;color:rgba(255,255,255,0.2);text-align:center;padding:8px;font-family:'Orbitron',sans-serif;letter-spacing:1px;">No runs yet</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div class="panel">
+        <div class="panel-title">Live Log</div>
+        <div class="log-feed" id="log-feed">
+          <div class="log-line"><span class="log-time">00:00:00</span><span class="log-msg info">System initialized ✦</span></div>
+          <div class="log-line"><span class="log-time">00:00:00</span><span class="log-msg info">Awaiting file upload…</span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Active Jobs</div>
+        <div class="sidebar-list" id="jobs-list"><div class="sidebar-item">No jobs yet</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">History</div>
+        <div class="log-feed" id="history-feed">No completed jobs yet.</div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">AI Cleaning Code</div>
+        <div id="ai-code-box" style="background:rgba(0,0,0,0.4);border-radius:8px;padding:12px;font-family:monospace;font-size:11px;color:rgba(255,255,255,0.5);min-height:120px;border:1px solid rgba(255,255,255,0.05);line-height:1.6;overflow-y:auto;max-height:180px;">
+          <span style="color:rgba(0,245,255,0.4);"># Generated clean() will appear here</span><br>
+          <span style="color:rgba(191,0,255,0.4);">def</span> <span style="color:rgba(255,105,180,0.7);">clean</span>(df):<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:rgba(0,255,209,0.4);">return</span> df
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Pipeline YAML</div>
+        <div id="yaml-box" style="background:rgba(0,0,0,0.4);border-radius:8px;padding:12px;font-family:monospace;font-size:11px;color:rgba(255,255,255,0.5);min-height:80px;border:1px solid rgba(255,255,255,0.05);line-height:1.6;overflow-y:auto;max-height:140px;">
+          <span style="color:rgba(0,245,255,0.4);"># Generated YAML will appear here</span><br>
+          <span style="color:rgba(255,230,0,0.5);">pipeline:</span> agent_generated
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">DuckDB Store</div>
+        <div id="duck-table" style="font-size:11px;color:rgba(255,255,255,0.5);">
+          <div style="display:grid;grid-template-columns:1fr 60px 60px;gap:8px;color:rgba(255,255,255,0.25);font-size:10px;font-family:'Orbitron',sans-serif;letter-spacing:1px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.05);padding-bottom:6px;">
+            <span>RUN ID</span><span>STATUS</span><span>ROWS</span>
+          </div>
+          <div id="duck-rows" style="display:flex;flex-direction:column;gap:4px;">
+            <div style="color:rgba(255,255,255,0.15);font-size:10px;text-align:center;padding:4px;font-family:'Orbitron',sans-serif;">No runs logged</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-ticker">
+      <div class="ticker-item"><span class="ticker-label">CPU</span><span class="ticker-val" id="f-cpu">--</span></div>
+      <div class="ticker-item"><span class="ticker-label">MEM</span><span class="ticker-val" id="f-mem">--</span></div>
+      <div class="ticker-item"><span class="ticker-label">RUNS</span><span class="ticker-val" id="f-runs">0</span></div>
+    </div>
+    <span>✦ DATAFLOW v1.0 ✦ AI PIPELINE ENGINE ✦</span>
+    <div class="ticker-item"><span class="ticker-label">BACKEND</span><span class="ticker-val" id="f-ai">CONNECTED</span></div>
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STEPS = [
+  { id:'upload',  name:'Upload Data',        desc:'Save to data/raw/',              icon:'📁' },
+  { id:'profile', name:'Profile File',       desc:'Analyze schema and types',       icon:'🔍' },
+  { id:'generate',name:'Generate Code',      desc:'Build clean() function',         icon:'🤖' },
+  { id:'sandbox', name:'Run Sandbox',        desc:'Test generated code',            icon:'🧪' },
+  { id:'apply',   name:'Apply Clean',        desc:'Execute cleaning function',      icon:'⚙️' },
+  { id:'save',    name:'Save Processed',     desc:'Write to data/processed/',       icon:'💾' },
+  { id:'planner', name:'Planner + YAML',     desc:'Build pipeline config',          icon:'📋' },
+  { id:'dag',     name:'DAG Execution',      desc:'Run tasks in order',             icon:'▶️' },
+  { id:'duckdb',  name:'DuckDB Logging',     desc:'Store run metadata',             icon:'🦆' },
+];
+
+let state = { currentStep: -1, status: 'idle', file: null, runCount: 0, startTime: null, progressKey: null };
+let logs = [];
+let selectedFile = null;
+let jobsPoll = null;
+let progressPoll = null;
+let clockTimer = null;
+
+function ts() {
+  const d = new Date();
+  return [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2,'0')).join(':');
+}
+
+function addLog(msg, type = 'info') {
+  logs.push({ time: ts(), msg, type });
+  if (logs.length > 60) logs.shift();
+  renderLogs();
+}
+
+function renderLogs() {
+  const feed = document.getElementById('log-feed');
+  feed.innerHTML = logs.map(l => `<div class="log-line"><span class="log-time">${l.time}</span><span class="log-msg ${l.type}">${l.msg}</span></div>`).join('');
+  feed.scrollTop = feed.scrollHeight;
+}
+
+function renderSteps(activeIndex = state.currentStep) {
+  const list = document.getElementById('step-list');
+  list.innerHTML = STEPS.map((s, i) => {
+    let cls = 'pending', dot = '○';
+    if (i < activeIndex) { cls = 'done'; dot = '✓'; }
+    else if (i === activeIndex) { cls = 'active'; dot = '◉'; }
+    return `<div class="step-item ${cls}">
+      <div class="step-dot ${cls}">${dot}</div>
+      <div class="step-info"><div class="step-name">${s.icon} ${s.name}</div><div class="step-desc">${s.desc}</div></div>
+      ${i < activeIndex ? '<div class="step-time">✓</div>' : ''}
+    </div>`;
+  }).join('');
+}
+
+function updateOrb() {
+  const pct = state.currentStep < 0 ? 0 : Math.round((state.currentStep / STEPS.length) * 100);
+  document.getElementById('orb-pct').textContent = pct + '%';
+  document.getElementById('clean-pct').textContent = pct + '%';
+  document.getElementById('clean-bar').style.width = pct + '%';
+  document.getElementById('pipe-pct').textContent = pct + '%';
+  document.getElementById('pipe-bar').style.width = pct + '%';
+
+  const statusText = state.status === 'running' ? 'RUNNING' : state.status === 'done' ? 'COMPLETE' : state.status === 'error' ? 'ERROR' : 'ACTIVE';
+  const jobText = state.status === 'running'
+    ? (STEPS[state.currentStep]?.name || 'working').toLowerCase()
+    : state.status === 'done'
+      ? 'pipeline complete'
+      : state.status === 'error'
+        ? 'retry required'
+        : 'reading current jobs';
+
+  document.getElementById('orb-status').textContent = statusText;
+  document.getElementById('orb-job').textContent = jobText;
+  document.getElementById('header-status-text').textContent = state.status === 'running' ? 'PIPELINE RUNNING' : 'SYSTEM ONLINE';
+  document.getElementById('header-status-text').style.color = state.status === 'running' ? 'var(--neon-pink)' : 'var(--neon-teal)';
+  document.getElementById('header-dot').style.background = state.status === 'running' ? 'var(--neon-pink)' : 'var(--neon-teal)';
+  document.getElementById('sidebar-stage').textContent = state.status === 'running' ? (STEPS[state.currentStep]?.name || 'running').toLowerCase() : state.status;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function clearFile() {
+  state.file = null;
+  selectedFile = null;
+  document.getElementById('file-tag-container').style.display = 'none';
+  document.getElementById('file-input').value = '';
+  document.getElementById('sidebar-file').textContent = '—';
+  addLog('File removed', 'warn');
+}
+
+function setFile(file) {
+  state.file = file;
+  selectedFile = file;
+  const name = file.name.length > 18 ? file.name.slice(0,16) + '…' : file.name;
+  document.getElementById('file-name-display').textContent = name;
+  document.getElementById('file-tag-container').style.display = 'block';
+  document.getElementById('sidebar-file').textContent = name;
+  addLog(`File loaded: ${file.name}`, 'ok');
+  showToast('✦ FILE LOADED ✦');
+}
+
+document.getElementById('file-input').addEventListener('change', e => { if (e.target.files[0]) setFile(e.target.files[0]); });
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('dragover'); if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); });
+
+function formatCode(code) {
+  return code
+    .replace(/def /g, '<span style="color:#BF00FF">def </span>')
+    .replace(/return /g, '<span style="color:#00FFD1">return </span>')
+    .replace(/import /g, '<span style="color:#FF2D78">import </span>')
+    .replace(/(pl\.[A-Za-z0-9_]+)/g, '<span style="color:#00F5FF">$1</span>')
+    .replace(/\n/g, '<br>')
+    .replace(/    /g, '&nbsp;&nbsp;&nbsp;&nbsp;');
+}
+
+function formatYaml(yaml) {
+  return yaml
+    .replace(/(pipeline:|steps:|name:|transform:|input:|output:|group_by:)/g, '<span style="color:#FFE600">$1</span>')
+    .replace(/(agent_generated|clean|aggregate)/g, '<span style="color:#00FFD1">$1</span>')
+    .replace(/\n/g, '<br>')
+    .replace(/  /g, '&nbsp;&nbsp;');
+}
+
+function addDuckRow(name, status, rows) {
+  const container = document.getElementById('duck-rows');
+  if (container.children[0]?.style?.textAlign === 'center') container.innerHTML = '';
+  const el = document.createElement('div');
+  el.style.cssText = 'display:grid;grid-template-columns:1fr 60px 60px;gap:8px;font-size:11px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);';
+  el.innerHTML = `<span style="color:rgba(0,245,255,0.6);">${name}</span><span style="color:var(--neon-teal);">${status}</span><span style="color:rgba(255,255,255,0.5);">${rows}</span>`;
+  container.prepend(el);
+}
+
+function addRunHistory(entry) {
+  const container = document.getElementById('run-history');
+  if (container.textContent.includes('No runs')) container.innerHTML = '';
+  const el = document.createElement('div');
+  el.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:rgba(0,255,209,0.04);border:1px solid rgba(0,255,209,0.1);border-radius:8px;font-size:11px;';
+  el.innerHTML = `<span style="color:rgba(0,245,255,0.7);font-family:'Orbitron',sans-serif;font-size:10px;">${entry.file || entry.job || 'JOB'}</span><span style="color:var(--neon-teal);">${entry.rows_in ?? '—'} → ${entry.rows_out ?? '—'}</span>`;
+  container.prepend(el);
+}
+
+async function refreshJobs() {
+  try {
+    const r = await fetch('/jobs');
+    const j = await r.json();
+    const jobs = j.jobs || [];
+    const count = j.active_jobs || jobs.length || 0;
+    document.getElementById('header-status-text').textContent = `ACTIVE • ${count} JOB${count === 1 ? '' : 'S'}`;
+    document.getElementById('orb-status').textContent = 'ACTIVE';
+    document.getElementById('orb-job').textContent = count > 0 ? `reading ${count} current job${count === 1 ? '' : 's'}` : 'reading current jobs';
+    document.getElementById('sidebar-jobs').textContent = String(count);
+    document.getElementById('sidebar-file').textContent = state.file ? state.file.name : (jobs[0]?.name || '—');
+    const list = document.getElementById('jobs-list');
+    list.innerHTML = jobs.length ? jobs.map(job => `<div class="sidebar-item"><strong>${job.name}</strong><br>${job.status}${job.rows_in ? ` • in ${job.rows_in}` : ''}${job.rows_out ? ` • out ${job.rows_out}` : ''}</div>`).join('') : '<div class="sidebar-item">No jobs yet</div>';
+  } catch (e) {
+    console.warn('jobs refresh failed', e);
+  }
+}
+
+async function refreshHistory() {
+  try {
+    const r = await fetch('/history?limit=10');
+    const j = await r.json();
+    const items = j.items || [];
+    document.getElementById('sidebar-history').textContent = String(items.length);
+    if (!items.length) {
+      document.getElementById('history-feed').textContent = 'No completed jobs yet.';
+      return;
+    }
+    document.getElementById('history-feed').innerHTML = items.map(item => {
+      const name = item.file || item.job || 'unknown';
+      const inRows = item.rows_in ?? '—';
+      const outRows = item.rows_out ?? '—';
+      const status = item.status || 'done';
+      const goal = item.goal || '';
+      return `<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.06)"><div style="color:var(--neon-cyan)">${name}</div><div>status: ${status}</div><div>rows in: ${inRows} • rows out: ${outRows}</div><div style="opacity:.7">${goal}</div></div>`;
+    }).join('');
+  } catch (e) {
+    console.warn('history refresh failed', e);
+  }
+}
+
+async function refreshMetricsFromProgress(key) {
+  if (!key) return;
+  try {
+    const r = await fetch(`/progress?file=${encodeURIComponent(key)}`);
+    const j = await r.json();
+    if (!j || j.status === 'waiting') return;
+    if (j.rows_in) document.getElementById('m-rows').textContent = j.rows_in;
+    if (j.rows_out) document.getElementById('m-out').textContent = j.rows_out;
+    if (j.stage) document.getElementById('sidebar-stage').textContent = j.stage;
+    if (j.status === 'analyzing') { state.currentStep = 1; addLog('Profiling input…', 'info'); }
+    if (j.status === 'generating_code' || j.status === 'generated_fallback') { state.currentStep = 2; document.getElementById('ai-code-box').innerHTML = formatCode(`def clean(df):\n    return df`); }
+    if (j.status === 'sandbox_ok') { state.currentStep = 3; document.getElementById('m-nulls').textContent = (j.cols?.length || 0); }
+    if (j.status === 'done') {
+      state.currentStep = STEPS.length - 1;
+      state.status = 'done';
+      document.getElementById('m-out').textContent = j.rows_out ?? document.getElementById('m-out').textContent;
+      document.getElementById('m-time').textContent = Math.max(1, Math.round((Date.now() - (state.startTime || Date.now())) / 1000)) + 's';
+      addLog('Cleaning finished', 'ok');
+      addRunHistory({ file: state.file?.name, rows_in: j.rows_in, rows_out: j.rows_out });
+      addDuckRow(state.file?.name || 'job', 'DONE', `${j.rows_out ?? '—'}`);
+      refreshHistory();
+      clearInterval(progressPoll);
+      progressPoll = null;
+    }
+    if (j.analysis) {
+      document.getElementById('m-rows').textContent = j.analysis.rows ?? document.getElementById('m-rows').textContent;
+    }
+    renderSteps();
+    updateOrb();
+  } catch (e) {
+    console.warn('progress poll error', e);
+  }
+}
+
+function startPipeline() {
+  if (!state.file) { showToast('⚠ Upload a file first'); return; }
+  if (state.status === 'running') { showToast('Already running!'); return; }
+  const fileInput = document.getElementById('file-input');
+  const form = new FormData();
+  form.append('file', state.file);
+  form.append('goal', document.getElementById('goal-input').value || 'make analysis-ready');
+  form.append('output_name', `${state.file.name.replace(/\.[^.]+$/, '')}_clean`);
+
+  state.status = 'running';
+  state.currentStep = 0;
+  state.startTime = Date.now();
+  document.getElementById('m-time').textContent = '0s';
+  document.getElementById('m-rows').textContent = '—';
+  document.getElementById('m-out').textContent = '—';
+  document.getElementById('m-nulls').textContent = '—';
+  document.getElementById('ai-code-box').innerHTML = `<span style="color:rgba(0,245,255,0.4);"># Generating code…</span>`;
+  addLog(`Run started — ${state.file.name}`, 'ok');
+  renderSteps();
+  updateOrb();
+
+  fetch('/upload', { method: 'POST', body: form })
+    .then(r => r.json())
+    .then(data => {
+      state.progressKey = data.progress_key;
+      document.getElementById('yaml-box').innerHTML = formatYaml(JSON.stringify(data, null, 2));
+      document.getElementById('sidebar-file').textContent = data.filename || state.file.name;
+      document.getElementById('f-runs').textContent = String((parseInt(document.getElementById('f-runs').textContent || '0', 10) || 0) + 1);
+      addLog(`Accepted: ${data.filename}`, 'ok');
+      if (progressPoll) clearInterval(progressPoll);
+      progressPoll = setInterval(() => refreshMetricsFromProgress(data.progress_key), 1400);
+      refreshJobs();
+      refreshHistory();
+    })
+    .catch(err => {
+      console.error(err);
+      state.status = 'error';
+      addLog('Upload failed', 'err');
+      updateOrb();
+    });
+}
+
+function updateClock() { document.getElementById('clock').textContent = ts(); setTimeout(updateClock, 1000); }
+function updateFooterMetrics() { document.getElementById('f-cpu').textContent = Math.floor(Math.random() * 40 + 10) + '%'; document.getElementById('f-mem').textContent = Math.floor(Math.random() * 300 + 400) + 'MB'; setTimeout(updateFooterMetrics, 2000); }
+
+renderSteps();
+updateOrb();
+updateClock();
+updateFooterMetrics();
+refreshJobs();
+refreshHistory();
+jobsPoll = setInterval(refreshJobs, 3000);
+
+</script>
+</body>
+</html>

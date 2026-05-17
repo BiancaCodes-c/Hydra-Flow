@@ -1,0 +1,6 @@
+dev:
+  db: sqlite:///dev.db
+staging:
+  db: postgresql://staging
+prod:
+  db: postgresql://prod
