@@ -692,7 +692,7 @@ function renderToolbar(activeId = STEPS[state.currentStep]?.id, status = state.s
   if (!toolbar) return;
   const goalChip = `<div class="toolbar-chip ${status === 'running' ? 'active' : 'done'}" data-step="goal">
     <div class="icon">✨</div>
-    <div class="meta"><div class="label">Goal</div><div class="sub">${state.goal || 'describe pipeline goal'}</div></div>
+    <div class="meta"><div class="label">Goal</div><div class="sub">${state.goal ? `selected: ${state.goal}` : 'describe pipeline goal'}</div></div>
   </div>`;
   toolbar.innerHTML = [goalChip].concat(TOOLBAR_ITEMS.map(item => {
     let cls = 'pending';
@@ -790,12 +790,14 @@ dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag
 document.getElementById('goal-presets').querySelectorAll('.goal-option').forEach(button => {
   button.addEventListener('click', () => {
     selectedGoal = button.dataset.goal || selectedGoal;
+    state.goal = selectedGoal;
     document.getElementById('sidebar-goal').textContent = selectedGoal;
     document.getElementById('active-goal').textContent = selectedGoal;
     document.getElementById('goal-presets').querySelectorAll('.goal-option').forEach(option => {
       option.classList.toggle('selected', option === button);
     });
     addLog(`Goal selected: ${selectedGoal}`, 'info');
+    renderToolbar(STEPS[state.currentStep]?.id, state.status);
   });
 });
 
