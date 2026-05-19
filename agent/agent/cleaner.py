@@ -55,6 +55,36 @@ class CleaningAgent:
         except Exception:
             pass
 
+    def _read_progress_started_at(self, file_path: str) -> str | None:
+        try:
+            progress_file = Path('state/progress') / f"{Path(file_path).stem}.json"
+            if not progress_file.exists():
+                return None
+            data = json.loads(progress_file.read_text(encoding='utf-8'))
+            return data.get('started_at')
+        except Exception:
+            return None
+
+    def _read_progress_duration_ms(self, file_path: str) -> int | None:
+        try:
+            progress_file = Path('state/progress') / f"{Path(file_path).stem}.json"
+            if not progress_file.exists():
+                return None
+            data = json.loads(progress_file.read_text(encoding='utf-8'))
+            started_at = data.get('started_at')
+            finished_at = data.get('finished_at') or datetime.now(timezone.utc).isoformat()
+            if not started_at:
+                return None
+            started = datetime.fromisoformat(started_at.replace('Z', '+00:00'))
+            ended = datetime.fromisoformat(finished_at.replace('Z', '+00:00'))
+            if started.tzinfo is None:
+                started = started.replace(tzinfo=timezone.utc)
+            if ended.tzinfo is None:
+                ended = ended.replace(tzinfo=timezone.utc)
+            return int((ended - started).total_seconds() * 1000)
+        except Exception:
+            return None
+
     def _infer_column_roles(self, profile: Dict[str, Any]) -> Dict[str, list]:
         date_cols, time_cols, tag_cols, id_cols = [], [], [], []
         for col in profile.get("columns", []):
@@ -148,58 +178,45 @@ class CleaningAgent:
             tag_cols = plan["roles"]["tag_cols"]
             sort_cols = date_cols + time_cols
             tag_col = tag_cols[0] if tag_cols else None
-            code = (
-                "def clean(df: pl.DataFrame) -> pl.DataFrame:\n"
-                "    # basic fallback cleaner: strip strings, coerce numbers, parse date/time, normalize tags, dedupe\n"
-                "    for c in df.columns:\n"
-                "        try:\n"
-                "            if df[c].dtype == pl.Utf8:\n"
-                "                df = df.with_columns(pl.col(c).str.strip().alias(c))\n"
-                "        except Exception:\n"
-                "            pass\n"
-                "    for c in df.columns:\n"
-                "        try:\n"
-                "            df = df.with_columns(pl.col(c).cast(pl.Float64).alias(c))\n"
-                "        except Exception:\n"
-                "            pass\n"
-            )
+            # build a stricter fallback cleaner without broad try/except blocks
+            code_lines = [
+                "def clean(df: pl.DataFrame) -> pl.DataFrame:",
+                "    # deterministic fallback cleaner: explicit transforms, no broad try/except",
+                "    # 1) strip whitespace from all string columns",
+                "    df = df.with_columns([pl.col(pl.Utf8).str.strip()])",
+                "    # 2) coerce numeric-looking string columns to Float64 (non-numeric become null)",
+                "    for c in df.columns:",
+                "        if df.schema.get(c) == pl.Utf8:",
+                "            cleaned = pl.col(c).str.replace_all(r'[^0-9\\.-]', '')",
+                "            df = df.with_columns(cleaned.cast(pl.Float64).alias(c))",
+            ]
+
+            # parse date/time columns explicitly
             for col in date_cols:
-                code += (
-                    f"    try:\n"
-                    f"        df = df.with_columns(pl.col('{col}').cast(pl.Utf8).str.strptime(pl.Date, strict=False, exact=False).alias('{col}'))\n"
-                    f"    except Exception:\n"
-                    f"        pass\n"
-                )
+                code_lines.append(f"    df = df.with_columns(pl.col('{col}').cast(pl.Utf8).str.strptime(pl.Date, strict=False).alias('{col}'))")
             for col in time_cols:
-                code += (
-                    f"    try:\n"
-                    f"        df = df.with_columns(pl.col('{col}').cast(pl.Utf8).str.strptime(pl.Datetime, strict=False, exact=False).alias('{col}'))\n"
-                    f"    except Exception:\n"
-                    f"        pass\n"
-                )
-            if tag_col:
-                code += (
-                    f"    try:\n"
-                    f"            df = df.with_columns(pl.col('{tag_col}').cast(pl.Utf8).str.to_lowercase().alias('{tag_col}'))\n"
-                    f"            df = df.with_columns(pl.col('{tag_col}').str.split(',').alias('{tag_col}_list'))\n"
-                    f"    except Exception:\n"
-                    f"        pass\n"
-                )
-            code += (
-                "    df = df.drop_nulls(how='all')\n"
-            )
+                code_lines.append(f"    df = df.with_columns(pl.col('{col}').cast(pl.Utf8).str.strptime(pl.Datetime, strict=False).alias('{col}'))")
+
+            # normalize tag columns and produce list versions
+            for col in tag_cols:
+                code_lines.append(f"    df = df.with_columns(pl.col('{col}').cast(pl.Utf8).str.to_lowercase().alias('{col}'))")
+                code_lines.append(f"    df = df.with_columns(pl.col('{col}').str.split(',').alias('{col}_list'))")
+
+            # drop completely empty rows/columns and sort/dedupe
+            code_lines.append("    df = df.drop_nulls(how='all')")
             if sort_cols:
-                sort_expr = ", ".join([f"'{c}'" for c in sort_cols])
-                code += (
-                    f"    try:\n"
-                    f"        df = df.sort([{sort_expr}])\n"
-                    f"    except Exception:\n"
-                    f"        pass\n"
-                )
-            code += (
-                "    df = df.unique()\n"
-                "    return df\n"
-            )
+                sort_list = ", ".join([f"'{c}'" for c in sort_cols])
+                code_lines.append(f"    df = df.sort([{sort_list}])")
+            if plan["roles"]["id_cols"]:
+                ids = plan["roles"]["id_cols"]
+                if len(ids) == 1:
+                    code_lines.append(f"    df = df.unique(subset=['{ids[0]}'])")
+                else:
+                    cols_list = ", ".join([f"'{c}'" for c in ids])
+                    code_lines.append(f"    df = df.unique(subset=[{cols_list}])")
+
+            code_lines.append("    return df")
+            code = "\n".join(code_lines) + "\n"
             self._write_progress(file_path, {"status":"generated_fallback", "goal": user_intent, "stage": "generate", **plan})
             return code
 
@@ -297,35 +314,6 @@ class CleaningAgent:
                         pass
                 return clean_df, code
 
-            def _read_progress_started_at(self, file_path: str) -> str | None:
-                try:
-                    progress_file = Path('state/progress') / f"{Path(file_path).stem}.json"
-                    if not progress_file.exists():
-                        return None
-                    data = json.loads(progress_file.read_text(encoding='utf-8'))
-                    return data.get('started_at')
-                except Exception:
-                    return None
-
-            def _read_progress_duration_ms(self, file_path: str) -> int | None:
-                try:
-                    progress_file = Path('state/progress') / f"{Path(file_path).stem}.json"
-                    if not progress_file.exists():
-                        return None
-                    data = json.loads(progress_file.read_text(encoding='utf-8'))
-                    started_at = data.get('started_at')
-                    finished_at = data.get('finished_at') or datetime.now(timezone.utc).isoformat()
-                    if not started_at:
-                        return None
-                    started = datetime.fromisoformat(started_at.replace('Z', '+00:00'))
-                    ended = datetime.fromisoformat(finished_at.replace('Z', '+00:00'))
-                    if started.tzinfo is None:
-                        started = started.replace(tzinfo=timezone.utc)
-                    if ended.tzinfo is None:
-                        ended = ended.replace(tzinfo=timezone.utc)
-                    return int((ended - started).total_seconds() * 1000)
-                except Exception:
-                    return None
             else:
                 print(f"[red]Attempt {attempt+1} failed: {test.get('error')}[/red]")
                 if attempt < self.max_retries - 1:
