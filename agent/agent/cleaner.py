@@ -282,7 +282,7 @@ class CleaningAgent:
                 self._write_progress(file_path, {"status":"sandbox_ok","rows_in": test.get('rows'), "cols": test.get('cols'), "goal": user_intent, "stage": "apply"})
                 df = pl.read_csv(file_path) if file_path.endswith('.csv') else pl.read_parquet(file_path)
                 local_ns = {"pl": pl, "df": df}
-                exec(code, {}, local_ns)
+                exec(code, local_ns)
                 clean_df = local_ns["clean"](df)
 
                 if save_to:

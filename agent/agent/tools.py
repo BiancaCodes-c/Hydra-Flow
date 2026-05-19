@@ -79,7 +79,7 @@ def profile_file(path: str) -> dict:
 def run_sandbox(code: str, df_path: str) -> dict:
     try:
         ns = {"pl": pl, "df": _read_df(df_path)}
-        exec(code, {}, ns)
+        exec(code, ns)
         if "clean" not in ns:
             return {"error": "Must define def clean(df)"}
         out = ns["clean"](ns["df"])
